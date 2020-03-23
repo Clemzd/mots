@@ -1,9 +1,6 @@
 {
   "SERVER_PORT":  2121,
 
-  "SOCKET_ADDR":  "http://127.0.0.1",
-  "SOCKET_PORT":  1337,
-
   "GRID_PROVIDER": {
     "PROVIDER_NAME": "Metro",
     "PROVIDER_ADDR": "https://www.rci-jeux.com/ope/metro/mfleches/data/mfl",

@@ -1,0 +1,8 @@
+{
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".vscode{,/**}"
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/ca7f653c-09ab-4d65-a5b8-2620d9d9d3e5/resourceGroups/appsvc_linux_centralus/providers/Microsoft.Web/sites/mots-fleches",
+    "appService.deploySubpath": ""
+}
