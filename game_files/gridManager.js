@@ -241,37 +241,8 @@ function placeArrows(grid) {
   };
 }
 
-function getGridAddress(commandArgv) {
-  var gridNumber,
-      today,
-      gridDefaultDay,
-      dayDiff;
-
-  switch (commandArgv) {
-    // No number given, load day grid
-    case 0:
-      console.info('\n\t[GRIDMANAGER] Load day grid');
-      // Compare the default date with today. Add this difference to the default grid number. Assume that we have one grid per day !
-      gridDefaultDay = new Date(config.PROVIDER_DEFAULT_GRID_DATE);
-      today = new Date();
-      dayDiff = Math.abs(today.getTime() - gridDefaultDay.getTime());
-      dayDiff = Math.floor(dayDiff / (1000 * 3600 * 24));
-      // gridNumber = config.PROVIDER_DEFAULT_GRID + dayDiff;
-      gridNumber = config.PROVIDER_DEFAULT_GRID;
-      break;
-
-    // Retreive the default grid
-    case -1:
-      console.info('\n\t[GRIDMANAGER] Load default grid');
-      gridNumber = config.PROVIDER_DEFAULT_GRID;
-      break;
-
-    // Load the specified grid
-    default:
-      console.info('\n\t[GRIDMANAGER] Load specific grid');
-      gridNumber = commandArgv;
-      break;
-  }
+function getGridAddress() {
+  const gridNumber = Math.floor(Math.random() * 2100) + 1;
 
   // Set provider name
   _gridInfos.provider = config.PROVIDER_NAME;
@@ -400,8 +371,8 @@ GridManager.prototype.getAccomplishmentRate = function (playerPoints, nbPlayers)
 * @param {Int}      gridNumber    The grid number ID to request to the provider
 * @param {Function} callback      The callback to raise either on success or error !
 */
-GridManager.prototype.retreiveAndParseGrid = function (gridNumber, callback) {
-  var gridAddr = getGridAddress(gridNumber),    // Retreive the grid URL, build from provider infos and ID requested
+GridManager.prototype.retreiveAndParseGrid = function (callback) {
+  var gridAddr = getGridAddress(),    // Retreive the grid URL, build from provider infos and ID requested
       req = https.get(gridAddr, function (res) { // Launch the request !
 
     var bodyChunks = [];
@@ -445,7 +416,7 @@ GridManager.prototype.retreiveAndParseGrid = function (gridNumber, callback) {
 * @param {Int}      gridNumber    The grid number ID to request to the provider
 * @param {Function} callback      The callback to raise either on success or error !
 */
-GridManager.prototype.resetGrid = function (gridNumber, callback) {
+GridManager.prototype.resetGrid = function (callback) {
 
   // Reset important values
   _grid = _wordsPoints = _theme = null;
@@ -455,7 +426,7 @@ GridManager.prototype.resetGrid = function (gridNumber, callback) {
   _gridInfos.nbWords = 0;
 
   // Load the grid
-  this.retreiveAndParseGrid(gridNumber, callback);
+  this.retreiveAndParseGrid(callback);
 };
 
 module.exports = GridManager;

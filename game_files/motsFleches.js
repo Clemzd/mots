@@ -4,7 +4,7 @@ var enums           = require('./enums'),
     PlayersManager  = require('./playersManager');
 
 // Defines
-var MAX_PLAYERS   = 4;
+var MAX_PLAYERS   = 8;
 var SERVER_CHAT_COLOR = '#c0392b';
 var TIME_BEFORE_START = 5;
 
@@ -13,7 +13,8 @@ var _playersManager,
     _gridManager,
     _io,
     _gameState,
-    _lastWordFoudTimestamp;
+    _lastWordFoudTimestamp,
+    _wordsFound;
 
 function startGame() {
   var Grid  = _gridManager.getGrid(),
@@ -24,11 +25,14 @@ function startGame() {
   // Change game state
   _gameState = enums.ServerState.OnGame;
 
+  // RàZ des mots déjà trouvés
+  _wordsFound = [];
+
   // Send grid to clients
   _io.sockets.emit('grid_event', { grid: Grid, timer: delay } );
 }
 
-function resetGame(gridID) {
+function resetGame() {
   var infos;
 
   // Reset game state
@@ -38,16 +42,16 @@ function resetGame(gridID) {
   _playersManager.resetPlayersForNewGame();
 
   // Reset the grid
-  _gridManager.resetGrid(gridID, function (grid) {
+  _gridManager.resetGrid(function (grid) {
     if (grid == null) {
       // If an error occurs, exit
-      console.error('[ERROR] Cannot retreive requested grid [' + gridID + ']');
-      sendChatMessage('Oups, impossible de récupérer la grille ' + gridID + '!');
+      console.error('[ERROR] Cannot retrieve next grid');
+      sendChatMessage('Oups, impossible de récupérer la prochaine grille !');
     }
     else {
       infos = _gridManager.getGridInfos();
       sendChatMessage('Grille ' + infos.provider + ' ' + infos.id + ' (Niveau ' + infos.level + ') prête !');
-      
+
       // Send reset order to clients
       _io.sockets.emit('grid_reset');
     }
@@ -80,6 +84,12 @@ function playerLog (socket, nick, monsterId) {
 
       // Send grid informations to the player
       sendPlayerMessage(socket, 'Grille actuelle: ' + gridInfos.provider + ' ' + gridInfos.id + ' (Niveau ' + gridInfos.level + ')');
+
+      // Si la partie est déjà commencée on transmet la grille au joueur
+      if (_gameState === enums.ServerState.OnGame) {
+        socket.emit('grid_event', { grid: _gridManager.getGrid(), timer: 0});
+        socket.emit('words_found', _wordsFound);
+      }
     }
   });
 }
@@ -131,6 +141,7 @@ function checkWord(player, wordObj) {
     // Notify all clients about this word
     wordObj.color = player.getColor();
     _io.sockets.emit('word_founded', wordObj);
+    _wordsFound.push(wordObj);
 
     // Check for bonuses
     bonuses = bonusChecker(points, _gridManager.getNbRemainingWords());
@@ -161,12 +172,10 @@ function checkServerCommand(message) {
     startGame();
     return (true);
   }
-  
+
   // Check the change grid command
-  if (message.indexOf('!grid') >= 0) {
-    // Retreive grid number and reset game parameters
-    number = parseInt(message.substr(6));
-    resetGame(number);
+  if (message.indexOf('!reset') >= 0) {
+    resetGame();
     return (true);
   }
 
@@ -190,7 +199,7 @@ function sendPlayerMessage(socket, Message) {
 /**
  *  Start mfl server.
  */
-exports.startMflServer = function (server, desiredGrid) {
+exports.startMflServer = function (server) {
   // Instanciiate io module with proper parameters
   _io = require('socket.io').listen(server);
   _io.configure(function(){
@@ -199,7 +208,7 @@ exports.startMflServer = function (server, desiredGrid) {
 
   // Retreive the grid
   _gridManager = new GridManager();
-  _gridManager.retreiveAndParseGrid(desiredGrid, function (grid) {
+  _gridManager.retreiveAndParseGrid(function (grid) {
     if (grid == null) {
       // If an error occurs, exit
       console.error('[ERROR] Cannot retreive grid. Abort server.');
@@ -217,11 +226,11 @@ exports.startMflServer = function (server, desiredGrid) {
   _io.sockets.on('connection', function (socket) {
 
     // If it remains slots in the room, add player and bind events
-    if ((_gameState == enums.ServerState.WaitingForPlayers) && (_playersManager.getNumberOfPlayers() < MAX_PLAYERS)) {
-      
+    if (_playersManager.getNumberOfPlayers() < MAX_PLAYERS) {
+
       // Add new player
       var player = _playersManager.addNewPlayer(socket);
-      
+
       // Register to socket events
       socket.on('disconnect', function () {
         // When a player disconnect, retreive player instance
@@ -229,16 +238,15 @@ exports.startMflServer = function (server, desiredGrid) {
           sendChatMessage( player.getNick() + ' a quitté la partie');
           _playersManager.removePlayer(player);
           player = null;
+          if (_playersManager.getNumberOfPlayers() < 1) {
+            resetGame();
+          }
         });
 
       });
 
       socket.on('userIsReady', function (infos) {
-        // Log player, bind events and notify everyone
-        if (_gameState == enums.ServerState.WaitingForPlayers)
-          playerLog(socket, infos.nick, infos.monster);
-        else // Notify game has started
-          socket.disconnect('game_already_started');
+        playerLog(socket, infos.nick, infos.monster);
       });
 
       socket.on('chat', function (message) {
@@ -264,7 +272,7 @@ exports.startMflServer = function (server, desiredGrid) {
     }
 
   });
-  
+
 
   // Set game state and print ready message
   _gameState = enums.ServerState.WaitingForPlayers;

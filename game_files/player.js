@@ -21,6 +21,7 @@ Player.prototype.getID = function () { return (this._playerTinyObject.id); };
 Player.prototype.getScore = function () { return (this._playerTinyObject.score); };
 Player.prototype.getNbWords = function () { return (this._playerTinyObject.nbWords); };
 Player.prototype.getColor = function () { return (this._playerTinyObject.monster.color); };
+Player.prototype.getMonster = function () { return (this._playerTinyObject.monster); };
 Player.prototype.getPlayerObject = function () { return (this._playerTinyObject); };
 
 Player.prototype.updateScore = function (points) {
